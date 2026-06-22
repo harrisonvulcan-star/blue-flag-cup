@@ -1250,12 +1250,18 @@ function daySummary(){
     const games=effMatches().filter(m=>{ if(isPlayed(m)) return false; const a=aestParts(m); return (a?a.dateKey:m.date)===next; }).map(m=>({m,a:aestParts(m)})).sort((x,y)=>(x.a?x.a.ms:0)-(y.a?y.a.ms:0));
     if(games.length){
       const ranked=games.slice().sort((x,y)=>(Math.min(rank(x.m.home)||999,rank(x.m.away)||999))-(Math.min(rank(y.m.home)||999,rank(y.m.away)||999)));
-      const keyN=Math.min(2,ranked.length);
-      const keyList=ranked.slice(0,keyN).map(g=>`${esc(g.m.home)} v ${esc(g.m.away)}`);
+      const ho=t=>{const p=playerById(ownerOf(t));return p?`<strong>${esc(p.name)}</strong>`:'unowned';};
+      const fixture=g=>`${esc(g.m.home)} v ${esc(g.m.away)} (${ho(g.m.home)} v ${ho(g.m.away)})`;
       const first=games[0].a?games[0].a.timeStr:games[0].m.localTime;
-      const dt=new Date(day+'T00:00:00Z'), nd=new Date(next+'T00:00:00Z');
-      const dayLabel=(nd-dt===86400000)?'tomorrow':fmtDateLong(next);
-      parts.push(`Coming up ${dayLabel}: ${games.length} ${games.length===1?'match':'matches'}, headlined by ${joinNames(keyList)} (first kickoff ${first} AEST).`);
+      const dt=new Date(day+'T00:00:00Z'), nd=new Date(next+'T00:00:00Z'); const dayLabel=(nd-dt===86400000)?'tomorrow':fmtDateLong(next);
+      let look=`Coming up ${dayLabel}: ${games.length} ${games.length===1?'match':'matches'}. Headline fixture: ${fixture(ranked[0])}`;
+      if(ranked.length>1) look+=`, with ${fixture(ranked[1])} also on the card`;
+      look+=`. First kickoff ${first} AEST.`;
+      const cnt={};
+      games.forEach(g=>{[g.m.home,g.m.away].forEach(t=>{const pid=ownerOf(t);if(!pid)return;(cnt[pid]=cnt[pid]||{n:0,teams:[]});cnt[pid].n++;cnt[pid].teams.push(t);});});
+      const multi=Object.keys(cnt).filter(pid=>cnt[pid].n>=2).map(pid=>({name:(playerById(pid)||{}).name||'?',n:cnt[pid].n,teams:cnt[pid].teams})).sort((a,b)=>b.n-a.n);
+      if(multi.length){const t=multi[0];look+=` <strong>${esc(t.name)}</strong> has the most riding on the day with ${t.n} teams out (${joinNames(t.teams.map(esc))}).`;}
+      parts.push(look);
     }
   }
   if(!parts.length) return '';
